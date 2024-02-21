@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime as dt
 import itertools
 from tqdm import tqdm
+
 pd.options.mode.copy_on_write = True
 
 
@@ -80,7 +81,6 @@ def get_gss(playing_stat):
 
         if ((i + 1) % 10) == 0:
             j = j + 1
-
 
     playing_stat['HTGS'] = HTGS
     playing_stat['ATGS'] = ATGS
@@ -196,22 +196,133 @@ def add_form(playing_stat):
     return playing_stat
 
 
+def get_mw(playing_stat):
+    matches = get_matches(playing_stat)
+    cuml_pts = get_cuml_points(matches)
+    j = 1
+    matchdays = len(cuml_pts.columns)
+    MatchWeek = []
+    for i in range(playing_stat):
+        MatchWeek.append(j)
+        j = min(j, matchdays - 1)
+        if ((i + 1) % 10) == 0:
+            j = j + 1
+    playing_stat['MW'] = MatchWeek
+    return playing_stat
+
+
+def get_form_points(string):
+    sum = 0
+    for letter in string:
+        sum += get_points(letter)
+    return sum
+
+
+def calculate_form_points(playing_stat):
+    playing_stat['HTFormPtsStr'] = playing_stat['HM1'] + playing_stat['HM2'] + playing_stat['HM3'] + playing_stat[
+        'HM4'] + playing_stat['HM5']
+    playing_stat['ATFormPtsStr'] = playing_stat['AM1'] + playing_stat['AM2'] + playing_stat['AM3'] + playing_stat[
+        'AM4'] + playing_stat['AM5']
+
+    playing_stat['HTFormPts'] = playing_stat['HTFormPtsStr'].apply(get_form_points)
+    playing_stat['ATFormPts'] = playing_stat['ATFormPtsStr'].apply(get_form_points)
+
+    return playing_stat
+
+
+def get_3game_ws(string):
+    if string[-3:] == 'WWW':
+        return 1
+    else:
+        return 0
+
+
+def get_5game_ws(string):
+    if string == 'WWWWW':
+        return 1
+    else:
+        return 0
+
+
+def get_3game_ls(string):
+    if string[-3:] == 'LLL':
+        return 1
+    else:
+        return 0
+
+
+def get_5game_ls(string):
+    if string == 'LLLLL':
+        return 1
+    else:
+        return 0
+
+
+def calculate_streaks(playing_stat):
+    playing_stat['HTWinStreak3'] = playing_stat['HTFormPtsStr'].apply(get_3game_ws)
+    playing_stat['HTWinStreak5'] = playing_stat['HTFormPtsStr'].apply(get_5game_ws)
+    playing_stat['HTLossStreak3'] = playing_stat['HTFormPtsStr'].apply(get_3game_ls)
+    playing_stat['HTLossStreak5'] = playing_stat['HTFormPtsStr'].apply(get_5game_ls)
+
+    playing_stat['ATWinStreak3'] = playing_stat['ATFormPtsStr'].apply(get_3game_ws)
+    playing_stat['ATWinStreak5'] = playing_stat['ATFormPtsStr'].apply(get_5game_ws)
+    playing_stat['ATLossStreak3'] = playing_stat['ATFormPtsStr'].apply(get_3game_ls)
+    playing_stat['ATLossStreak5'] = playing_stat['ATFormPtsStr'].apply(get_5game_ls)
+
+    return playing_stat
+
+
+def calculate_differences(playing_stat):
+    # Get Goal Difference
+    playing_stat['HTGD'] = playing_stat['HTGS'] - playing_stat['HTGC']
+    playing_stat['ATGD'] = playing_stat['ATGS'] - playing_stat['ATGC']
+
+    # Diff in points
+    playing_stat['DiffPts'] = playing_stat['HTP'] - playing_stat['ATP']
+    playing_stat['DiffFormPts'] = playing_stat['HTFormPts'] - playing_stat['ATFormPts']
+
+    # Diff in last year positions
+    playing_stat['DiffLP'] = playing_stat['HomeTeamLP'] - playing_stat['AwayTeamLP']
+
+    return playing_stat
+
+
+def get_last_positions(playing_stat, Standings, year):
+    print(f"Getting last year positions for {year}")
+    HomeTeamLP = []
+    AwayTeamLP = []
+    for i in range(playing_stat):
+        ht = playing_stat.iloc[i].HomeTeam
+        at = playing_stat.iloc[i].AwayTeam
+        HomeTeamLP.append(Standings.loc[ht][year])
+        AwayTeamLP.append(Standings.loc[at][year])
+    playing_stat['HomeTeamLP'] = HomeTeamLP
+    playing_stat['AwayTeamLP'] = AwayTeamLP
+    return playing_stat
+
+
 if __name__ == "__main__":
 
     loc = "data\\"
     file_names = [f"pl{year:02d}-{year + 1:02d}.csv" for year in range(3, 24)]
-
+    standings = pd.read_csv(loc + "plStandings03-23.csv", index_col=0)
+    standings.set_index(['Team'], inplace=True)
+    standings = standings.fillna(18)
     dataframes = [pd.read_csv(loc + file_name) for file_name in file_names]
 
     for df in dataframes:
         df["Date"] = df["Date"].apply(parse_date)
 
-    columns_for_playing_stats = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
-
-    playing_stats = [get_gss(df[columns_for_playing_stats]) for df in
+    playing_stats = [get_gss(df) for df in
                      tqdm(dataframes, desc="Processing goal statistics", ncols=100)]
     playing_stats = [get_agg_points(df) for df in tqdm(playing_stats, desc="Aggregating points", ncols=100)]
     playing_stats = [add_form(df) for df in tqdm(playing_stats, desc="Adding recent form", ncols=100)]
-    print(playing_stats[12].head())
-
-    playing_stats[12]
+    playing_stats = [get_mw(df) for df in tqdm(playing_stats, desc="Adding matchweeks", ncols=100)]
+    playing_stats = [calculate_form_points(df) for df in tqdm(playing_stats, desc="Calculating form points", ncols=100)]
+    playing_stats = [get_last_positions(df, standings, year) for year, df in tqdm(enumerate(playing_stats, start=3), desc=f"Adding last year positions", ncols=100)]
+    playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
+    playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
+    # save all playing stats in one csv
+    playing_stats = pd.concat(playing_stats)
+    playing_stats.to_csv("data\\all_stats.csv", index=False)
+    print("All stats saved to all_stats.csv")
