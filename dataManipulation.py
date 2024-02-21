@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime as dt
 import itertools
-
+from tqdm import tqdm
 pd.options.mode.copy_on_write = True
 
 
@@ -17,7 +17,6 @@ def parse_date(date):
 def get_goals_scored(playing_stat):
     teams = {}
     for i in playing_stat['HomeTeam'].unique():
-        print("check {} \n".format(i))
         teams[i] = []
 
     for i in range(len(playing_stat)):
@@ -41,7 +40,6 @@ def get_goals_scored(playing_stat):
 def get_goals_conceded(playing_stat):
     teams = {}
     for i in playing_stat['HomeTeam'].unique():
-        print("check {} \n".format(i))
         teams[i] = []
 
     for i in range(len(playing_stat)):
@@ -83,8 +81,6 @@ def get_gss(playing_stat):
         if ((i + 1) % 10) == 0:
             j = j + 1
 
-    #     print("check line 87")
-    #     print(playing_stat.shape,len(HTGS))
 
     playing_stat['HTGS'] = HTGS
     playing_stat['ATGS'] = ATGS
@@ -106,7 +102,6 @@ def get_points(result):
 def get_matches(playing_stat):
     teams = {}
     for i in playing_stat['HomeTeam'].unique():
-        print("check {} \n".format(i))
         teams[i] = []
 
     for i in range(len(playing_stat)):
@@ -143,19 +138,15 @@ def get_agg_points(playing_stat):
     ATP = []
     j = 1
     matchdays = len(cuml_pts.columns)
-    # TODO: matchdays smaller then j
-    print(matchdays)
     for i in range(len(playing_stat)):
         ht = playing_stat.iloc[i].HomeTeam
         at = playing_stat.iloc[i].AwayTeam
         HTP.append(cuml_pts.loc[ht][j])
         ATP.append(cuml_pts.loc[at][j])
-
+        # Ensure j is within the range of cuml_pts columns
+        j = min(j, matchdays - 1)
         if ((i + 1) % 10) == 0:
-            if j > matchdays:
-                j = matchdays
-            else:
-                j = j + 1
+            j = j + 1
 
     playing_stat['HTP'] = HTP
     playing_stat['ATP'] = ATP
@@ -216,9 +207,11 @@ if __name__ == "__main__":
         df["Date"] = df["Date"].apply(parse_date)
 
     columns_for_playing_stats = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
-    playing_stats = [get_gss(df[columns_for_playing_stats]) for df in dataframes]
-    playing_stats = [get_agg_points(df) for df in playing_stats]
-    playing_stats = [add_form(df) for df in playing_stats]
+
+    playing_stats = [get_gss(df[columns_for_playing_stats]) for df in
+                     tqdm(dataframes, desc="Processing goal statistics", ncols=100)]
+    playing_stats = [get_agg_points(df) for df in tqdm(playing_stats, desc="Aggregating points", ncols=100)]
+    playing_stats = [add_form(df) for df in tqdm(playing_stats, desc="Adding recent form", ncols=100)]
     print(playing_stats[12].head())
 
     playing_stats[12]
