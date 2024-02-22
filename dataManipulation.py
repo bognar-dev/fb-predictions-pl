@@ -202,7 +202,7 @@ def get_mw(playing_stat):
     j = 1
     matchdays = len(cuml_pts.columns)
     MatchWeek = []
-    for i in range(playing_stat):
+    for i in range(len(playing_stat)):
         MatchWeek.append(j)
         j = min(j, matchdays - 1)
         if ((i + 1) % 10) == 0:
@@ -291,7 +291,7 @@ def get_last_positions(playing_stat, Standings, year):
     print(f"Getting last year positions for {year}")
     HomeTeamLP = []
     AwayTeamLP = []
-    for i in range(playing_stat):
+    for i in range(len(playing_stat)):
         ht = playing_stat.iloc[i].HomeTeam
         at = playing_stat.iloc[i].AwayTeam
         HomeTeamLP.append(Standings.loc[ht][year])
@@ -305,7 +305,8 @@ if __name__ == "__main__":
 
     loc = "data\\"
     file_names = [f"pl{year:02d}-{year + 1:02d}.csv" for year in range(3, 24)]
-    standings = pd.read_csv(loc + "plStandings03-23.csv", index_col=0)
+    standings = pd.read_csv(loc + "plStandings.csv")
+    print(standings.index)
     standings.set_index(['Team'], inplace=True)
     standings = standings.fillna(18)
     dataframes = [pd.read_csv(loc + file_name) for file_name in file_names]
@@ -318,10 +319,11 @@ if __name__ == "__main__":
     playing_stats = [get_agg_points(df) for df in tqdm(playing_stats, desc="Aggregating points", ncols=100)]
     playing_stats = [add_form(df) for df in tqdm(playing_stats, desc="Adding recent form", ncols=100)]
     playing_stats = [get_mw(df) for df in tqdm(playing_stats, desc="Adding matchweeks", ncols=100)]
-    playing_stats = [calculate_form_points(df) for df in tqdm(playing_stats, desc="Calculating form points", ncols=100)]
     playing_stats = [get_last_positions(df, standings, year) for year, df in tqdm(enumerate(playing_stats, start=3), desc=f"Adding last year positions", ncols=100)]
     playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
+    playing_stats = [calculate_form_points(df) for df in tqdm(playing_stats, desc="Calculating form points", ncols=100)]
     playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
+
     # save all playing stats in one csv
     playing_stats = pd.concat(playing_stats)
     playing_stats.to_csv("data\\all_stats.csv", index=False)
