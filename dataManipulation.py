@@ -7,12 +7,12 @@ from tqdm import tqdm
 pd.options.mode.copy_on_write = True
 
 
-def parse_date(date):
+def parse_date(date, fmt="%d/%m/%y"):
     if pd.isnull(date) or date == "":
         return None
     else:
         date = str(date)
-        return dt.strptime(date, "%d/%m/%y").date()
+        return dt.strptime(date, fmt).date()
 
 
 def get_goals_scored(playing_stat):
@@ -82,10 +82,10 @@ def get_gss(playing_stat):
         if ((i + 1) % 10) == 0:
             j = j + 1
 
-    HTGS = pd.Series(HTGS)
-    ATGS = pd.Series(ATGS)
-    HTGC = pd.Series(HTGC)
-    ATGC = pd.Series(ATGC)
+    HTGS = pd.Series(HTGS, name='HTGS')
+    ATGS = pd.Series(ATGS, name='ATGS')
+    HTGC = pd.Series(HTGC, name='HTGC')
+    ATGC = pd.Series(ATGC, name='ATGC')
 
     playing_stat = pd.concat([playing_stat, HTGS], axis=1)
     playing_stat = pd.concat([playing_stat, ATGS], axis=1)
@@ -153,8 +153,8 @@ def get_agg_points(playing_stat):
         if ((i + 1) % 10) == 0:
             j = j + 1
 
-    HTP = pd.Series(HTP)
-    ATP = pd.Series(ATP)
+    HTP = pd.Series(HTP, name='HTP')
+    ATP = pd.Series(ATP, name='ATP')
     playing_stat = pd.concat([playing_stat, HTP], axis=1)
     playing_stat = pd.concat([playing_stat, ATP], axis=1)
 
@@ -174,7 +174,8 @@ def get_form(playing_stat, num):
 
 
 def add_form(playing_stat):
-    for num in range(1, 5):
+    new_columns = {}
+    for num in range(1, 6):
         form = get_form(playing_stat, num)
         h = ['N' for i in range(num * 10)]  # since form is not available for n MW (n*10)
         a = ['N' for i in range(num * 10)]
@@ -198,8 +199,10 @@ def add_form(playing_stat):
 
             if ((i + 1) % 10) == 0:
                 j = j + 1
-        playing_stat['HM' + str(num)] = h[:playing_stat.shape[0]]
-        playing_stat['AM' + str(num)] = a[:playing_stat.shape[0]]
+        new_columns['HM' + str(num)] = h[:playing_stat.shape[0]]
+        new_columns['AM' + str(num)] = a[:playing_stat.shape[0]]
+
+    playing_stat = pd.concat([playing_stat, pd.DataFrame(new_columns)], axis=1)
 
     return playing_stat
 
@@ -295,17 +298,23 @@ def calculate_differences(playing_stat):
     return playing_stat
 
 
-def get_last_positions(playing_stat, Standings, year):
+def get_last_positions(playing_stat, Standings):
+    year = str(parse_date(playing_stat['Date'].min(), "%Y-%m-%d").year - 1)[-2:]
+
+
     print(f"Getting last year positions for {year}")
     HomeTeamLP = []
     AwayTeamLP = []
     for i in range(len(playing_stat)):
         ht = playing_stat.iloc[i].HomeTeam
         at = playing_stat.iloc[i].AwayTeam
-        HomeTeamLP.append(Standings.loc[ht][year])
-        AwayTeamLP.append(Standings.loc[at][year])
-    playing_stat['HomeTeamLP'] = HomeTeamLP
-    playing_stat['AwayTeamLP'] = AwayTeamLP
+        # Check if the team's position is NaN (i.e. team was not in the league last year) and assign 21 if promoted
+        HomeTeamLP.append(Standings.loc[ht][year] if pd.notna(Standings.loc[ht][year]) else 21)
+        AwayTeamLP.append(Standings.loc[at][year] if pd.notna(Standings.loc[at][year]) else 21)
+    HomeTeamLP = pd.Series(HomeTeamLP, name='HomeTeamLP')
+    AwayTeamLP = pd.Series(AwayTeamLP, name='AwayTeamLP')
+    playing_stat = pd.concat([playing_stat, HomeTeamLP], axis=1)
+    playing_stat = pd.concat([playing_stat, AwayTeamLP], axis=1)
     return playing_stat
 
 
@@ -316,21 +325,20 @@ if __name__ == "__main__":
     standings = pd.read_csv(loc + "plStandings.csv")
     print(standings.index)
     standings.set_index(['Team'], inplace=True)
-    standings = standings.fillna(18)
     dataframes = [pd.read_csv(loc + file_name) for file_name in file_names]
-
     for df in dataframes:
         df["Date"] = df["Date"].apply(parse_date)
-
+    columns_req = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
+    dataframes = [df[columns_req] for df in dataframes]
     playing_stats = [get_gss(df) for df in
                      tqdm(dataframes, desc="Processing goal statistics", ncols=100)]
     playing_stats = [get_agg_points(df) for df in tqdm(playing_stats, desc="Aggregating points", ncols=100)]
     playing_stats = [add_form(df) for df in tqdm(playing_stats, desc="Adding recent form", ncols=100)]
     playing_stats = [get_mw(df) for df in tqdm(playing_stats, desc="Adding matchweeks", ncols=100)]
-    playing_stats = [get_last_positions(df, standings, year) for year, df in
-                     tqdm(enumerate(playing_stats, start=3), desc=f"Adding last year positions", ncols=100)]
-    playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
+    playing_stats = [get_last_positions(df, standings) for df in
+                     tqdm(playing_stats, desc=f"Adding last year positions", ncols=100)]
     playing_stats = [calculate_form_points(df) for df in tqdm(playing_stats, desc="Calculating form points", ncols=100)]
+    playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
     playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
 
     # save all playing stats in one csv
