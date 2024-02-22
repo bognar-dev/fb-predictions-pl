@@ -82,10 +82,15 @@ def get_gss(playing_stat):
         if ((i + 1) % 10) == 0:
             j = j + 1
 
-    playing_stat['HTGS'] = HTGS
-    playing_stat['ATGS'] = ATGS
-    playing_stat['HTGC'] = HTGC
-    playing_stat['ATGC'] = ATGC
+    HTGS = pd.Series(HTGS)
+    ATGS = pd.Series(ATGS)
+    HTGC = pd.Series(HTGC)
+    ATGC = pd.Series(ATGC)
+
+    playing_stat = pd.concat([playing_stat, HTGS], axis=1)
+    playing_stat = pd.concat([playing_stat, ATGS], axis=1)
+    playing_stat = pd.concat([playing_stat, HTGC], axis=1)
+    playing_stat = pd.concat([playing_stat, ATGC], axis=1)
 
     return playing_stat
 
@@ -148,8 +153,11 @@ def get_agg_points(playing_stat):
         if ((i + 1) % 10) == 0:
             j = j + 1
 
-    playing_stat['HTP'] = HTP
-    playing_stat['ATP'] = ATP
+    HTP = pd.Series(HTP)
+    ATP = pd.Series(ATP)
+    playing_stat = pd.concat([playing_stat, HTP], axis=1)
+    playing_stat = pd.concat([playing_stat, ATP], axis=1)
+
     return playing_stat
 
 
@@ -319,7 +327,8 @@ if __name__ == "__main__":
     playing_stats = [get_agg_points(df) for df in tqdm(playing_stats, desc="Aggregating points", ncols=100)]
     playing_stats = [add_form(df) for df in tqdm(playing_stats, desc="Adding recent form", ncols=100)]
     playing_stats = [get_mw(df) for df in tqdm(playing_stats, desc="Adding matchweeks", ncols=100)]
-    playing_stats = [get_last_positions(df, standings, year) for year, df in tqdm(enumerate(playing_stats, start=3), desc=f"Adding last year positions", ncols=100)]
+    playing_stats = [get_last_positions(df, standings, year) for year, df in
+                     tqdm(enumerate(playing_stats, start=3), desc=f"Adding last year positions", ncols=100)]
     playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
     playing_stats = [calculate_form_points(df) for df in tqdm(playing_stats, desc="Calculating form points", ncols=100)]
     playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
