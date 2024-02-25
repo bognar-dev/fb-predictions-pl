@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime as dt
 import itertools
 from tqdm import tqdm
-
+from sklearn.preprocessing import LabelEncoder
 pd.options.mode.copy_on_write = True
 
 
@@ -300,9 +300,6 @@ def calculate_differences(playing_stat):
 
 def get_last_positions(playing_stat, Standings):
     year = str(parse_date(playing_stat['Date'].min(), "%Y-%m-%d").year - 1)[-2:]
-
-
-    print(f"Getting last year positions for {year}")
     HomeTeamLP = []
     AwayTeamLP = []
     for i in range(len(playing_stat)):
@@ -316,6 +313,25 @@ def get_last_positions(playing_stat, Standings):
     playing_stat = pd.concat([playing_stat, HomeTeamLP], axis=1)
     playing_stat = pd.concat([playing_stat, AwayTeamLP], axis=1)
     return playing_stat
+
+
+def form_one_hot_encoding(playing_stat):
+    mapping = {'N': -1, 'L': 0, 'D': 1, 'W': 3}
+
+    for col in ['HM1', 'HM2', 'HM3', 'HM4', 'HM5', 'AM1', 'AM2', 'AM3', 'AM4', 'AM5']:
+        playing_stat[col] = playing_stat[col].map(mapping)
+
+    # Assuming df is your DataFrame and 'column' is the column with the 'LDWNN' like strings
+    # Convert the string into a list of characters
+    playing_stat['ATFormPtsStr'] = playing_stat['ATFormPtsStr'].apply(list)
+    playing_stat['HTFormPtsStr'] = playing_stat['HTFormPtsStr'].apply(list)
+    # Apply LabelEncoder to each list of characters in the column
+    le = LabelEncoder()
+    playing_stat['ATFormPtsStr'] = playing_stat['ATFormPtsStr'].apply(le.fit_transform)
+    playing_stat['HTFormPtsStr'] = playing_stat['HTFormPtsStr'].apply(le.fit_transform)
+
+    return playing_stat
+
 
 
 if __name__ == "__main__":
@@ -340,7 +356,7 @@ if __name__ == "__main__":
     playing_stats = [calculate_form_points(df) for df in tqdm(playing_stats, desc="Calculating form points", ncols=100)]
     playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
     playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
-
+    playing_stats = [form_one_hot_encoding(df) for df in tqdm(playing_stats, desc="One hot encoding form", ncols=100)]
     # save all playing stats in one csv
     playing_stats = pd.concat(playing_stats)
     playing_stats.to_csv("data\\all_stats.csv", index=False)
