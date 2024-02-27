@@ -5,7 +5,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, LinearSVC, NuSVC
 import pandas as pd
 from model_evaluation import split_match_data, get_model_metrics, get_scores, plot_scores
-
+from scikeras.wrappers import KerasClassifier
+from models import get_LSTM
 models = [
     RandomForestClassifier(),
     GradientBoostingClassifier(),
@@ -14,19 +15,23 @@ models = [
     LinearSVC(),
     NuSVC(),
     KNeighborsClassifier(n_neighbors=22),
+    KerasClassifier(
+        get_LSTM,
+        loss="sparse_categorical_crossentropy",
+    )
 ]
 
-#list_of_features = [
+# list_of_features = [
 #    'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'HTGS', 'ATGS', 'HTGC', 'ATGC', 'HTP', 'ATP',
 #    'HM1', 'AM1', 'HM2', 'AM2', 'HM3', 'AM3', 'HM4', 'AM4', 'HM5', 'AM5', 'MW', 'HomeTeamLP',
 #    'AwayTeamLP', 'HTFormPtsStr', 'ATFormPtsStr', 'HTFormPts', 'ATFormPts', 'HTWinStreak3',
 #    'HTWinStreak5', 'HTLossStreak3', 'HTLossStreak5', 'ATWinStreak3', 'ATWinStreak5',
 #    'ATLossStreak3', 'ATLossStreak5', 'HTGD', 'ATGD', 'DiffPts', 'DiffFormPts', 'DiffLP'
-#]
+# ]
 
 list_of_features = [
     'HTP', 'ATP',
-    'HM1', 'AM1', 'HM2', 'AM2', 'HM3', 'AM3', 'HM4', 'AM4', 'HM5', 'AM5', 'MW', 'HomeTeamLP',
+    'HM1', 'AM1', 'HM2', 'AM2', 'HM3', 'AM3', 'HM4', 'AM4', 'HM5', 'AM5', 'HomeTeamLP',
     'AwayTeamLP', 'HTFormPts', 'ATFormPts', 'HTWinStreak3',
     'HTWinStreak5', 'HTLossStreak3', 'HTLossStreak5', 'ATWinStreak3', 'ATWinStreak5',
     'ATLossStreak3', 'ATLossStreak5', 'HTGD', 'ATGD', 'DiffPts', 'DiffFormPts', 'DiffLP'

@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import datetime as dt
 import itertools
 from tqdm import tqdm
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+
 pd.options.mode.copy_on_write = True
 
 
@@ -333,6 +334,39 @@ def form_one_hot_encoding(playing_stat):
     return playing_stat
 
 
+def scale_features(playing_stat):
+    cols = ['HTGD', 'ATGD', 'DiffPts', 'DiffFormPts', 'HTP', 'ATP']
+    playing_stat.MW = playing_stat.MW.astype(float)
+
+    for col in cols:
+        playing_stat[col] = playing_stat[col] / playing_stat.MW
+
+    playing_stat.HTGS = playing_stat.HTGS / playing_stat.HTGS.max()
+    playing_stat.ATGS = playing_stat.ATGS / playing_stat.ATGS.max()
+    playing_stat.HTGC = playing_stat.HTGC / playing_stat.HTGC.max()
+    playing_stat.ATGC = playing_stat.ATGC / playing_stat.ATGC.max()
+
+    return playing_stat
+
+
+def one_hot_encode_matches(playing_stat):
+    # Create a LabelEncoder
+    le = LabelEncoder()
+
+    # Apply the LabelEncoder to the 'HM1' to 'AM5' columns
+    for col in ['HM1', 'HM2', 'HM3', 'HM4', 'HM5', 'AM1', 'AM2', 'AM3', 'AM4', 'AM5']:
+        playing_stat[col] = le.fit_transform(playing_stat[col])
+
+    # One-hot encode the 'FTR' column
+    onehotencoder = OneHotEncoder()
+    final = onehotencoder.fit_transform(playing_stat['FTR'].values.reshape(-1,1)).toarray()
+
+    # Add the one-hot encoded columns to the dataframe
+    playing_stat.loc[:,"final1"] = final[:,0]
+    playing_stat.loc[:,"final2"] = final[:,1]
+
+    return playing_stat
+
 
 if __name__ == "__main__":
 
@@ -357,6 +391,8 @@ if __name__ == "__main__":
     playing_stats = [calculate_streaks(df) for df in tqdm(playing_stats, desc="Calculating streaks", ncols=100)]
     playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
     playing_stats = [form_one_hot_encoding(df) for df in tqdm(playing_stats, desc="One hot encoding form", ncols=100)]
+    playing_stats = [scale_features(df) for df in tqdm(playing_stats, desc="Scaling features", ncols=100)]
+    playing_stats = [one_hot_encode_matches(df) for df in tqdm(playing_stats, desc="One hot encoding matches", ncols=100)]
     # save all playing stats in one csv
     playing_stats = pd.concat(playing_stats)
     playing_stats.to_csv("data\\all_stats.csv", index=False)

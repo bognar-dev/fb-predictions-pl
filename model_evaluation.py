@@ -7,14 +7,16 @@ from matplotlib import pyplot as plt
 import numpy as np
 import textwrap
 
+from sklearn.preprocessing import LabelEncoder
+
 
 def split_match_data(match_data, list_of_features: list[str], target_variable: str, test_size=0.3, random_state=42):
-    # list_of_features = ['home_team_api_id', 'away_team_api_id', 'league_id', 'home_team_goal', 'away_team_goal',
-    #                     'overall_rating_home', 'overall_rating_away', 'overall_rating_difference',
-    #                     ]
-    # target_variable = 'home_status'
+
     X = match_data[list_of_features]
     y = match_data[target_variable]
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
 
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
@@ -23,15 +25,21 @@ def split_match_data(match_data, list_of_features: list[str], target_variable: s
 
 
 def get_model_metrics(models, X_train, X_test, y_train, y_test):
+    batch_size = 64
     model_metrics = {}
     for model in models:
         model_name = model.__class__.__name__
-        model.fit(X_train, y_train)
+        if model_name == 'KerasClassifier':
+            model.fit(
+                X_train, y_train, validation_data=(X_test, y_test), batch_size=batch_size, epochs=30
+            )
+        else:
+            model.fit(X_train, y_train)
         predictions = model.predict(X_test)
         model_score = model.score(X_test, y_test)
         accuracy = accuracy_score(y_test, predictions)
         conf_matrix = confusion_matrix(y_test, predictions)
-        precision = precision_score(y_test, predictions, average='weighted')
+        precision = precision_score(y_test, predictions, average='weighted',zero_division=0)
         recall = recall_score(y_test, predictions, average='weighted')
         f1 = f1_score(y_test, predictions, average='weighted')
         y_true = y_test
