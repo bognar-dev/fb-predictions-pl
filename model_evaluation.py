@@ -1,4 +1,5 @@
 import pandas as pd
+from keras.callbacks import EarlyStopping
 from matplotlib import pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split
@@ -30,8 +31,11 @@ def get_model_metrics(models, X_train, X_test, y_train, y_test):
     for model in models:
         model_name = model.__class__.__name__
         if model_name == 'KerasClassifier':
+            early_stopping = EarlyStopping(monitor="val_loss",
+                                           mode="min", patience=5,
+                                           restore_best_weights=True)
             model.fit(
-                X_train, y_train, validation_data=(X_test, y_test), batch_size=batch_size, epochs=30
+                X_train, y_train, validation_data=(X_test, y_test), batch_size=batch_size, epochs=300, callbacks=[early_stopping]
             )
         else:
             model.fit(X_train, y_train)

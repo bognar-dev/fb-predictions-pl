@@ -17,4 +17,10 @@ def get_LSTM(input_dim=29, units=64, output_size=3, allow_cudnn_kernel=True):
             keras.layers.Dense(output_size),
         ]
     )
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer='adam',
+        metrics=['accuracy']
+    )
+    print(model.summary())
     return model

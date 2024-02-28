@@ -3,12 +3,14 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, LinearSVC, NuSVC
+from sklearn.naive_bayes import GaussianNB
 import pandas as pd
 from model_evaluation import split_match_data, get_model_metrics, get_scores, plot_scores
 from scikeras.wrappers import KerasClassifier
 from models import get_LSTM
+
 models = [
-    RandomForestClassifier(),
+    RandomForestClassifier(n_estimators=100),
     GradientBoostingClassifier(),
     LogisticRegression(max_iter=1000),
     SVC(),
@@ -18,7 +20,8 @@ models = [
     KerasClassifier(
         get_LSTM,
         loss="sparse_categorical_crossentropy",
-    )
+    ),
+    GaussianNB(),
 ]
 
 # list_of_features = [
