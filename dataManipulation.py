@@ -178,8 +178,8 @@ def add_form(playing_stat):
     new_columns = {}
     for num in range(1, 6):
         form = get_form(playing_stat, num)
-        h = ['N' for i in range(num * 10)]  # since form is not available for n MW (n*10)
-        a = ['N' for i in range(num * 10)]
+        h = ['N' for _ in range(num * 10)]  # since form is not available for n MW (n*10)
+        a = ['N' for _ in range(num * 10)]
 
         j = num
         for i in range((num * 10), len(playing_stat)):
@@ -359,11 +359,11 @@ def one_hot_encode_matches(playing_stat):
 
     # One-hot encode the 'FTR' column
     onehotencoder = OneHotEncoder()
-    final = onehotencoder.fit_transform(playing_stat['FTR'].values.reshape(-1,1)).toarray()
+    final = onehotencoder.fit_transform(playing_stat['FTR'].values.reshape(-1, 1)).toarray()
 
     # Add the one-hot encoded columns to the dataframe
-    playing_stat.loc[:,"final1"] = final[:,0]
-    playing_stat.loc[:,"final2"] = final[:,1]
+    playing_stat.loc[:, "final1"] = final[:, 0]
+    playing_stat.loc[:, "final2"] = final[:, 1]
 
     return playing_stat
 
@@ -392,7 +392,8 @@ if __name__ == "__main__":
     playing_stats = [calculate_differences(df) for df in tqdm(playing_stats, desc="Calculating differences", ncols=100)]
     playing_stats = [form_one_hot_encoding(df) for df in tqdm(playing_stats, desc="One hot encoding form", ncols=100)]
     playing_stats = [scale_features(df) for df in tqdm(playing_stats, desc="Scaling features", ncols=100)]
-    playing_stats = [one_hot_encode_matches(df) for df in tqdm(playing_stats, desc="One hot encoding matches", ncols=100)]
+    playing_stats = [one_hot_encode_matches(df) for df in
+                     tqdm(playing_stats, desc="One hot encoding matches", ncols=100)]
     # save all playing stats in one csv
     playing_stats = pd.concat(playing_stats)
     playing_stats.to_csv("data\\all_stats.csv", index=False)
