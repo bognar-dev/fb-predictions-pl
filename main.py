@@ -5,10 +5,10 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, LinearSVC, NuSVC
 from sklearn.naive_bayes import GaussianNB
 import pandas as pd
-from model_evaluation import split_match_data, get_model_metrics, get_scores, plot_scores
 from scikeras.wrappers import KerasClassifier
 from models import get_LSTM, get_CNN, get_Dense
 
+from model_evaluation import split_match_data, get_model_metrics, get_scores, plot_scores
 models = [
     RandomForestClassifier(n_estimators=100),
     GradientBoostingClassifier(),
@@ -56,7 +56,7 @@ def main():
     start = time()
     match_data = pd.read_csv("data/all_stats.csv")
     X_train, X_test, y_train, y_test = split_match_data(match_data, list_of_features, target_variable)
-    metrics_df = get_model_metrics(models, X_train, X_test, y_train, y_test)
+    metrics_df = get_model_metrics(models, X_train, X_test, y_train, y_test,1)
     get_scores(metrics_df)
     plot_scores(metrics_df)
     end = time()
