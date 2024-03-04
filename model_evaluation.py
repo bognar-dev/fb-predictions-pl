@@ -1,3 +1,6 @@
+import datetime
+
+import keras.utils
 import pandas as pd
 from keras.callbacks import EarlyStopping
 from matplotlib import pyplot as plt
@@ -7,17 +10,16 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 import numpy as np
 import textwrap
+import tensorflow as tf
 
 from sklearn.preprocessing import LabelEncoder
 
 
 def split_match_data(match_data, list_of_features: list[str], target_variable: str, test_size=0.3, random_state=42):
-
     X = match_data[list_of_features]
     y = match_data[target_variable]
     le = LabelEncoder()
     y = le.fit_transform(y)
-
 
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
@@ -25,25 +27,33 @@ def split_match_data(match_data, list_of_features: list[str], target_variable: s
     return X_train, X_test, y_train, y_test
 
 
-def get_model_metrics(models, X_train, X_test, y_train, y_test):
+def get_model_metrics(models, X_train, X_test, y_train, y_test, epochs=300):
     batch_size = 64
     model_metrics = {}
     for model in models:
         model_name = model.__class__.__name__
         if model_name == 'KerasClassifier':
+            log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+            model_name = model.model.name
+            print(f"Training {model_name}")
             early_stopping = EarlyStopping(monitor="val_loss",
                                            mode="min", patience=5,
                                            restore_best_weights=True)
             model.fit(
-                X_train, y_train, validation_data=(X_test, y_test), batch_size=batch_size, epochs=300, callbacks=[early_stopping]
+                X_train, y_train, validation_data=(X_test, y_test), batch_size=batch_size, epochs=epochs
+                ,
+                callbacks=[early_stopping, tensorboard_callback]
             )
+            keras.utils.plot_model(model.model, show_shapes=True, show_layer_names=True,
+                                   to_file=f"stat/{model_name}_flowchart.png")
         else:
             model.fit(X_train, y_train)
         predictions = model.predict(X_test)
         model_score = model.score(X_test, y_test)
         accuracy = accuracy_score(y_test, predictions)
         conf_matrix = confusion_matrix(y_test, predictions)
-        precision = precision_score(y_test, predictions, average='weighted',zero_division=0)
+        precision = precision_score(y_test, predictions, average='weighted', zero_division=0)
         recall = recall_score(y_test, predictions, average='weighted')
         f1 = f1_score(y_test, predictions, average='weighted')
         y_true = y_test
@@ -80,7 +90,7 @@ def plot_scores(model_metrics):
     x = np.arange(len(model_metrics))
     width = 0.15
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(15, 8))
 
     # Create a color palette
     colours = sns.color_palette('pastel')
@@ -101,13 +111,14 @@ def plot_scores(model_metrics):
     # Add labels, title, legend, etc.
     ax.set_ylabel('Metrics')
     ax.set_title('Model Metrics by Model')
-    ax.set_xticks(x + width)
+    ax.set_xticks(x + width * 2)
     ax.set_xticklabels(model_metrics.keys())
     ax.legend()
 
     wrap_labels(ax, 10)
 
     plt.show()
+    plt.savefig('stat/model_metrics.png')
 
 
 def plot_confusionMatrix(y_true, y_pred):

@@ -7,7 +7,7 @@ from sklearn.naive_bayes import GaussianNB
 import pandas as pd
 from model_evaluation import split_match_data, get_model_metrics, get_scores, plot_scores
 from scikeras.wrappers import KerasClassifier
-from models import get_LSTM
+from models import get_LSTM, get_CNN, get_Dense
 
 models = [
     RandomForestClassifier(n_estimators=100),
@@ -18,9 +18,18 @@ models = [
     NuSVC(),
     KNeighborsClassifier(n_neighbors=22),
     KerasClassifier(
-        get_LSTM,
+        get_CNN(),
         loss="sparse_categorical_crossentropy",
     ),
+    KerasClassifier(
+        get_Dense(),
+        loss="sparse_categorical_crossentropy"
+    ),
+    KerasClassifier(
+        get_LSTM(),
+        loss="sparse_categorical_crossentropy",
+    ),
+
     GaussianNB(),
 ]
 
